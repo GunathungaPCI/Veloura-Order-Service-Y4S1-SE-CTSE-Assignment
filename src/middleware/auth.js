@@ -1,14 +1,28 @@
-const jwt = require('jsonwebtoken');
+const { getBearerToken, verifyAccessToken } = require('../utils/jwt');
 
-module.exports = function (req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'No token provided' });
+/**
+ * authenticate — verifies the JWT access token on every protected route.
+ * Structure mirrors the auth service's authMiddleware.js.
+ * Sets req.user = { id, roles } on success.
+ */
+const authenticate = (req, res, next) => {
+  const authHeader = req.header('authorization') || '';
+  const token = getBearerToken(authHeader);
+
+  if (!token) {
+    return res.status(401).json({ message: 'Missing authorization token' });
+  }
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-    req.user = decoded;
-    next();
-  } catch (err) {
-    res.status(403).json({ error: 'Invalid token' });
+    const payload = verifyAccessToken(token);
+    req.user = {
+      id:    payload.userId,
+      roles: payload.roles || [],
+    };
+    return next();
+  } catch (error) {
+    return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
+
+module.exports = { authenticate };
