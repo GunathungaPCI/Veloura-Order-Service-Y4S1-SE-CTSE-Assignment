@@ -111,3 +111,60 @@ exports.cancelOrder = async (req, res) => {
   }
 };
 
+// Admin: Get all orders with optional status filter, search, and pagination
+exports.getAllOrders = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 15, search } = req.query;
+    const filter = {};
+
+    if (status && status !== 'all') {
+      const valid = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+      if (!valid.includes(status)) return res.status(400).json({ error: 'Invalid status filter' });
+      filter.status = status;
+    }
+
+    if (search && search.trim()) {
+      const mongoose = require('mongoose');
+      const s = search.trim();
+      if (mongoose.Types.ObjectId.isValid(s)) {
+        filter._id = new mongoose.Types.ObjectId(s);
+      } else {
+        filter.userId = { $regex: s, $options: 'i' };
+      }
+    }
+
+    const pageNum  = Math.max(1, Number(page));
+    const limitNum = Math.min(100, Math.max(1, Number(limit)));
+    const skip     = (pageNum - 1) * limitNum;
+
+    const [orders, total] = await Promise.all([
+      Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limitNum),
+      Order.countDocuments(filter),
+    ]);
+
+    res.status(200).json({ orders, total, page: pageNum, limit: limitNum });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Admin: Update any order's status
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    }
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    );
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    res.status(200).json(order);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
