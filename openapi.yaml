@@ -4,7 +4,10 @@ info:
   version: 1.0.0
   description: Cart and order management API for the online clothing platform.
 servers:
+  - url: https://veloura-order-service-y4s1-se-ctse-assignment-production.up.railway.app
+    description: Production (Railway)
   - url: http://localhost:5001
+    description: Local development
 tags:
   - name: Health
   - name: Cart
