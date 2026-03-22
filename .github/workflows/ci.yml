@@ -1,66 +1,66 @@
 name: CI
 
 on:
-	push:
-		branches: ["main", "master"]
-	pull_request:
-		branches: ["main", "master"]
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
 
 jobs:
-	build:
-		runs-on: ubuntu-latest
-		permissions:
-			contents: read
-		env:
-			SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-			REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
-			REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
-			REGISTRY_PASS: ${{ secrets.REGISTRY_PASS }}
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
+      REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+      REGISTRY_PASS: ${{ secrets.REGISTRY_PASS }}
 
-		defaults:
-			run:
-				working-directory: .
+    defaults:
+      run:
+        working-directory: .
 
-		steps:
-			- name: Checkout
-				uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-			- name: Setup Node.js
-				uses: actions/setup-node@v4
-				with:
-					node-version: 20
-					cache: npm
-					cache-dependency-path: package-lock.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-			- name: Install dependencies
-				run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-			- name: Lint
-				run: npm run lint
+      - name: Lint
+        run: npm run lint
 
-			- name: Test
-				run: npm test
+      - name: Test
+        run: npm test
 
-			- name: Snyk SAST
-				if: ${{ env.SNYK_TOKEN != '' }}
-				env:
-					SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
-				run: |
-					npm install -g snyk
-					snyk test --severity-threshold=critical
+      - name: Snyk SAST
+        if: ${{ env.SNYK_TOKEN != '' }}
+        env:
+          SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
+        run: |
+          npm install -g snyk
+          snyk test --severity-threshold=critical
 
-			- name: Docker login
-				if: ${{ github.event_name == 'push' && env.REGISTRY_USER != '' && env.REGISTRY_PASS != '' && env.REGISTRY_URL != '' }}
-				run: echo ${{ env.REGISTRY_PASS }} | docker login ${{ env.REGISTRY_URL }} -u ${{ env.REGISTRY_USER }} --password-stdin
+      - name: Docker login
+        if: ${{ github.event_name == 'push' && env.REGISTRY_USER != '' && env.REGISTRY_PASS != '' && env.REGISTRY_URL != '' }}
+        run: echo ${{ env.REGISTRY_PASS }} | docker login ${{ env.REGISTRY_URL }} -u ${{ env.REGISTRY_USER }} --password-stdin
 
-			- name: Build Docker image
-				if: ${{ github.event_name == 'push' && env.REGISTRY_URL != '' }}
-				run: docker build -t ${{ env.REGISTRY_URL }}/order-service:${{ github.sha }} .
+      - name: Build Docker image
+        if: ${{ github.event_name == 'push' && env.REGISTRY_URL != '' }}
+        run: docker build -t ${{ env.REGISTRY_URL }}/order-service:${{ github.sha }} .
 
-			- name: Push Docker image
-				if: ${{ github.event_name == 'push' && env.REGISTRY_USER != '' && env.REGISTRY_PASS != '' && env.REGISTRY_URL != '' }}
-				run: docker push ${{ env.REGISTRY_URL }}/order-service:${{ github.sha }}
+      - name: Push Docker image
+        if: ${{ github.event_name == 'push' && env.REGISTRY_USER != '' && env.REGISTRY_PASS != '' && env.REGISTRY_URL != '' }}
+        run: docker push ${{ env.REGISTRY_URL }}/order-service:${{ github.sha }}
 
-			- name: Deploy (placeholder)
-				if: ${{ false }}
-				run: echo "Add cloud CLI deploy step here"
+      - name: Deploy (placeholder)
+        if: ${{ false }}
+        run: echo "Add cloud CLI deploy step here"
